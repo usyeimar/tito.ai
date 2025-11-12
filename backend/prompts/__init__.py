@@ -1,5 +1,5 @@
 """
-Pipecat lead qualifier prompts package
+# Tito.ai prompts package
 """
 
 from .flow import *

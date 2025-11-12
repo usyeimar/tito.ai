@@ -1,5 +1,8 @@
 FROM python:3.11-bullseye
 
+LABEL maintainer="Tito AI Team"
+LABEL description="Tito AI Backend - Voice AI Assistant"
+
 WORKDIR /app
 
 # Upgrade pip and install Python dependencies from requirements.txt,

@@ -1,3 +1,1 @@
-"""
-Pipecat lead qualifier bots package
-"""
+# Tito.ai bots package

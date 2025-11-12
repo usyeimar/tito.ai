@@ -1,5 +1,8 @@
 FROM python:3.11-bullseye
 
+LABEL maintainer="Tito AI Team"
+LABEL description="Tito AI Backend - Voice AI Assistant"
+
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 

@@ -1,303 +1,303 @@
-# Pipecat Lead Qualifier
+# Tito.ai
 
-Pipecat Lead Qualifier is a modular voice assistant application that uses a FastAPI server to orchestrate bot workflows and a Next.js client for user interactions.
+Tito.ai es una aplicación modular de asistente de voz que utiliza un servidor FastAPI para orquestar flujos de trabajo de bots y un cliente Next.js para las interacciones del usuario.
 
-## Table of Contents
+## Tabla de Contenidos
 
-- [Project Overview](#project-overview)
-- [Architecture](#architecture)
-  - [Server](#server)
-  - [Client](#client)
-- [Setup and Installation](#setup-and-installation)
-- [Running the Application](#running-the-application)
-- [Testing](#testing)
-- [Contributing](#contributing)
-- [License](#license)
-- [Contact](#contact)
+- [Descripción del Proyecto](#descripción-del-proyecto)
+- [Arquitectura](#arquitectura)
+  - [Servidor](#servidor)
+  - [Cliente](#cliente)
+- [Configuración e Instalación](#configuración-e-instalación)
+- [Ejecutando la Aplicación](#ejecutando-la-aplicación)
+- [Pruebas](#pruebas)
+- [Contribuciones](#contribuciones)
+- [Licencia](#licencia)
+- [Contacto](#contacto)
 
-## Project Overview
+## Descripción del Proyecto
 
-The project qualifies leads by guiding users through a series of conversational steps. It comprises two main components:
+El proyecto califica a los leads guiando a los usuarios a través de una serie de pasos conversacionales. Se compone de dos componentes principales:
 
-1. **Server:** Built with FastAPI, this component manages bot workflows and handles integrations (e.g., Daily rooms, transcription, TTS, and OpenAI services).
-2. **Client:** Developed with Next.js and TypeScript, this component serves as the front-facing widget.
+1.  **Servidor:** Construido con FastAPI, este componente gestiona los flujos de trabajo de los bots y maneja las integraciones (por ejemplo, salas de Daily, transcripción, TTS y servicios de OpenAI).
+2.  **Cliente:** Desarrollado con Next.js y TypeScript, este componente sirve como el widget de cara al usuario.
 
-## Architecture
+## Arquitectura
 
-### Server
+### Servidor
 
-#### Directory Structure
+#### Estructura de Directorios
 ```
 server/
-├── __init__.py            # Package initialization and version info
-├── main.py                # FastAPI server entry point
-├── runner.py              # Bot runner CLI and lifecycle management
-├── Dockerfile             # Container configuration
-├── requirements.txt       # Python dependencies
-├── bots/                  # Bot implementations
+├── __init__.py            # Inicialización del paquete e información de la versión
+├── main.py                # Punto de entrada del servidor FastAPI
+├── runner.py              # CLI del corredor de bots y gestión del ciclo de vida
+├── Dockerfile             # Configuración del contenedor
+├── requirements.txt       # Dependencias de Python
+├── bots/                  # Implementaciones de bots
 │   ├── __init__.py
-│   ├── base_bot.py        # Shared bot framework
-│   ├── flow.py            # Flow-based bot implementation
-│   └── simple.py          # Simple bot implementation
-├── config/                # Configuration management
+│   ├── base_bot.py        # Framework de bot compartido
+│   ├── flow.py            # Implementación de bot basada en flujo
+│   └── simple.py          # Implementación de bot simple
+├── config/                # Gestión de la configuración
 │   ├── __init__.py
-│   ├── bot.py             # Bot-specific settings and env var handling
-│   └── server.py          # Server network and runtime configuration
-├── prompts/               # LLM system prompts
-│   ├── __init__.py        # Package initialization; exposes flow, simple, helpers, and types modules
-│   ├── flow.py            # Flow-based prompt definitions for conversation workflows
-│   ├── simple.py          # Simple, direct prompt definitions for one-off interactions
-│   ├── helpers.py         # Helper functions for prompt generation and manipulation
-│   └── types.py           # Type definitions for prompt structures
-├── services/              # External API integrations
+│   ├── bot.py             # Configuraciones específicas del bot y manejo de variables de entorno
+│   └── server.py          # Configuración de red y tiempo de ejecución del servidor
+├── prompts/               # Prompts del sistema LLM
+│   ├── __init__.py        # Inicialización del paquete; expone los módulos flow, simple, helpers y types
+│   ├── flow.py            # Definiciones de prompts basadas en flujo para flujos de trabajo de conversación
+│   ├── simple.py          # Definiciones de prompts simples y directas para interacciones únicas
+│   ├── helpers.py         # Funciones de ayuda para la generación y manipulación de prompts
+│   └── types.py           # Definiciones de tipos para estructuras de prompts
+├── services/              # Integraciones de API externas
 │   ├── __init__.py
-│   └── calcom_api.py      # Cal.com API client
+│   └── calcom_api.py      # Cliente de la API de Cal.com
 ```
 
-#### Key Components
+#### Componentes Clave
 
-- **`main.py`**  
-  The FastAPI server entry point that handles:
-  - Room creation and management
-  - Bot process lifecycle
-  - HTTP endpoints for browser and RTVI access
-  - Connection credential management
+- **`main.py`**
+  El punto de entrada del servidor FastAPI que maneja:
+  - Creación y gestión de salas
+  - Ciclo de vida del proceso del bot
+  - Endpoints HTTP para acceso del navegador y RTVI
+  - Gestión de credenciales de conexión
 
-- **`runner.py`**  
-  The bot runner CLI that handles:
-  - Bot configuration via CLI arguments
-  - Environment variable overrides
-  - Bot process initialization
-  - Supported CLI arguments:
+- **`runner.py`**
+  El CLI del corredor de bots que maneja:
+  - Configuración del bot a través de argumentos CLI
+  - Sobrescritura de variables de entorno
+  - Inicialización del proceso del bot
+  - Argumentos CLI soportados:
     ```bash
-    -u/--room-url      Daily room URL (required)
-    -t/--token         Daily room token (required)
-    -b/--bot-type      Bot variant [simple|flow]
-    -p/--tts-provider  TTS service [deepgram|cartesia|elevenlabs|rime]
-    -m/--openai-model  OpenAI model name
-    -T/--temperature   LLM temperature (0.0-2.0)
-    -n/--bot-name      Custom bot name
+    -u/--room-url      URL de la sala de Daily (requerido)
+    -t/--token         Token de la sala de Daily (requerido)
+    -b/--bot-type      Variante del bot [simple|flow]
+    -p/--tts-provider  Servicio de TTS [deepgram|cartesia|elevenlabs|rime]
+    -m/--openai-model  Nombre del modelo de OpenAI
+    -T/--temperature   Temperatura del LLM (0.0-2.0)
+    -n/--bot-name      Nombre personalizado del bot
     ```
 
-- **`bots/`**  
-  Contains bot implementations with:
-  - `base_bot.py`: Shared framework and service initialization
-  - `flow.py`: Sophisticated flow-based conversation logic
-  - `simple.py`: Basic single-prompt implementation
+- **`bots/`**
+  Contiene implementaciones de bots con:
+  - `base_bot.py`: Framework compartido e inicialización de servicios
+  - `flow.py`: Lógica de conversación sofisticada basada en flujos
+  - `simple.py`: Implementación básica de un solo prompt
 
-- **`config/`**  
-  Manages application configuration:
-  - Environment variable validation
-  - Type-safe settings classes
-  - Default value handling
+- **`config/`**
+  Gestiona la configuración de la aplicación:
+  - Validación de variables de entorno
+  - Clases de configuración con tipos seguros
+  - Manejo de valores por defecto
 
-- **`prompts/`**  
-  Contains the modular LLM system prompts including:
-  - `flow.py`: Flow-based prompt definitions for conversational flows
-  - `simple.py`: Simple prompt definitions for the single prompt agent
-  - `helpers.py`: Functions to assist in prompt generation and maintenance
-  - `types.py`: Definitions for prompt structure and types
+- **`prompts/`**
+  Contiene los prompts modulares del sistema LLM, incluyendo:
+  - `flow.py`: Definiciones de prompts basadas en flujo para flujos de conversación
+  - `simple.py`: Definiciones de prompts simples para el agente de un solo prompt
+  - `helpers.py`: Funciones para ayudar en la generación y mantenimiento de prompts
+  - `types.py`: Definiciones para la estructura y tipos de los prompts
 
-- **`services/`**  
-  External API integrations:
-  - Cal.com API for appointment scheduling
-  - Additional integrations can be added as needed
+- **`services/`**
+  Integraciones de API externas:
+  - API de Cal.com para la programación de citas
+  - Se pueden añadir integraciones adicionales según sea necesario
 
-- **`utils/`**  
-  Common utilities and helper functions:
-  - Bot lifecycle management
-  - Shared helper functions
+- **`utils/`**
+  Utilidades y funciones de ayuda comunes:
+  - Gestión del ciclo de vida del bot
+  - Funciones de ayuda compartidas
 
-### Client
+### Cliente
 
-#### Directory Structure
-- **Directory:** `client/`
+#### Estructura de Directorios
+- **Directorio:** `client/`
 
-#### Overview
-- Developed with Next.js using TypeScript with strict type checking.
-- Follows Next.js conventions: routes under `/app` or `/pages`, shared components in `/components`, and styles in `/styles` or via CSS Modules.
-- Managed with pnpm for dependency handling.
+#### Descripción General
+- Desarrollado con Next.js usando TypeScript con comprobación de tipos estricta.
+- Sigue las convenciones de Next.js: rutas en `/app` o `/pages`, componentes compartidos en `/components`, y estilos en `/styles` o mediante CSS Modules.
+- Gestionado con pnpm para el manejo de dependencias.
 
-## Setup and Installation
+## Configuración e Instalación
 
-### Environment Setup
+### Configuración del Entorno
 
-Create a `.env` file with the required environment variables:
+Crea un archivo `.env` con las variables de entorno requeridas:
 ```bash
-# Required API Keys
-DAILY_API_KEY=your_daily_api_key
-DEEPGRAM_API_KEY=your_deepgram_api_key
+# Claves de API Requeridas
+DAILY_API_KEY=tu_clave_de_api_de_daily
+DEEPGRAM_API_KEY=tu_clave_de_api_de_deepgram
 
-# LLM Configuration (Google is default)
-GOOGLE_API_KEY=your_google_api_key        # Required for Google LLM
-GOOGLE_MODEL=gemini-2.0-flash             # Default Google model
-GOOGLE_TEMPERATURE=1.0                     # Default Google temperature
+# Configuración de LLM (Google es el predeterminado)
+GOOGLE_API_KEY=tu_clave_de_api_de_google        # Requerido para Google LLM
+GOOGLE_MODEL=gemini-2.0-flash             # Modelo de Google por defecto
+GOOGLE_TEMPERATURE=1.0                     # Temperatura de Google por defecto
 
-# Optional OpenAI Configuration
-OPENAI_API_KEY=your_openai_api_key        # Required if using OpenAI
-OPENAI_MODEL=gpt-4o                       # Default OpenAI model
-OPENAI_TEMPERATURE=0.2                    # Default OpenAI temperature
+# Configuración Opcional de OpenAI
+OPENAI_API_KEY=tu_clave_de_api_de_openai        # Requerido si se usa OpenAI
+OPENAI_MODEL=gpt-4o                       # Modelo de OpenAI por defecto
+OPENAI_TEMPERATURE=0.2                    # Temperatura de OpenAI por defecto
 
-# TTS Configuration
-TTS_PROVIDER=deepgram                     # Options: deepgram, cartesia, elevenlabs, rime
-DEEPGRAM_VOICE=aura-athena-en            # Default Deepgram voice
-CARTESIA_API_KEY=your_cartesia_api_key   # Required if using Cartesia TTS
-CARTESIA_VOICE=your_cartesia_voice_id    # Default: 79a125e8-cd45-4c13-8a67-188112f4dd22
-ELEVENLABS_API_KEY=your_elevenlabs_key   # Required if using ElevenLabs TTS
-ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb # Default ElevenLabs voice
-RIME_API_KEY=your_rime_api_key           # Required if using Rime TTS
-RIME_VOICE_ID=marissa                    # Default Rime voice
+# Configuración de TTS
+TTS_PROVIDER=deepgram                     # Opciones: deepgram, cartesia, elevenlabs, rime
+DEEPGRAM_VOICE=aura-athena-en            # Voz de Deepgram por defecto
+CARTESIA_API_KEY=tu_clave_de_api_de_cartesia   # Requerido si se usa Cartesia TTS
+CARTESIA_VOICE=tu_id_de_voz_de_cartesia    # Por defecto: 79a125e8-cd45-4c13-8a67-188112f4dd22
+ELEVENLABS_API_KEY=tu_clave_de_elevenlabs   # Requerido si se usa ElevenLabs TTS
+ELEVENLABS_VOICE_ID=JBFqnCBsd6RMkjVDRZzb # Voz de ElevenLabs por defecto
+RIME_API_KEY=tu_clave_de_api_de_rime           # Requerido si se usa Rime TTS
+RIME_VOICE_ID=marissa                    # Voz de Rime por defecto
 
-# Bot Configuration
-BOT_TYPE=flow                            # Options: flow, simple (default: flow)
-BOT_NAME="AskJohnGeorge Lead Qualifier"  # Default bot name
-LLM_PROVIDER=google                      # Options: google, openai (default: google)
-ENABLE_STT_MUTE_FILTER=false            # Enable STT mute filter (default: false)
+# Configuración del Bot
+BOT_TYPE=flow                            # Opciones: flow, simple (por defecto: flow)
+BOT_NAME="Tito.ai"                       # Nombre del bot por defecto
+LLM_PROVIDER=google                      # Opciones: google, openai (por defecto: google)
+ENABLE_STT_MUTE_FILTER=false             # Habilitar filtro de silencio STT (por defecto: false)
 
-# Optional overrides
-DAILY_API_URL=https://api.daily.co/v1    # Default Daily API URL
+# Sobrescrituras Opcionales
+DAILY_API_URL=https://api.daily.co/v1    # URL de la API de Daily por defecto
 ```
 
-Ensure that the `.env` file is excluded from version control:
+Asegúrate de que el archivo `.env` esté excluido del control de versiones:
 ```bash
 grep -qxF ".env" .gitignore || echo ".env" >> .gitignore
 ```
 
-### Advanced Configuration Options
+### Opciones de Configuración Avanzadas
 
-The application supports extensive configuration through environment variables and CLI arguments. Here's a detailed breakdown:
+La aplicación admite una configuración extensa a través de variables de entorno y argumentos CLI. Aquí hay un desglose detallado:
 
-#### LLM Configuration
-- **LLM Provider Selection**
-  - Default provider is Google (Gemini)
-  - Can be switched to OpenAI via `LLM_PROVIDER=openai`
-  - Each provider has its own model and temperature settings
+#### Configuración de LLM
+- **Selección del Proveedor de LLM**
+  - El proveedor por defecto es Google (Gemini)
+  - Se puede cambiar a OpenAI a través de `LLM_PROVIDER=openai`
+  - Cada proveedor tiene su propio modelo y configuraciones de temperatura
 
-- **Google LLM Settings**
-  - Model: `GOOGLE_MODEL` (default: gemini-2.0-flash)
-  - Temperature: `GOOGLE_TEMPERATURE` (default: 1.0)
+- **Configuración de Google LLM**
+  - Modelo: `GOOGLE_MODEL` (por defecto: gemini-2.0-flash)
+  - Temperatura: `GOOGLE_TEMPERATURE` (por defecto: 1.0)
 
-- **OpenAI Settings**
-  - Model: `OPENAI_MODEL` (default: gpt-4o)
-  - Temperature: `OPENAI_TEMPERATURE` (default: 0.2)
+- **Configuración de OpenAI**
+  - Modelo: `OPENAI_MODEL` (por defecto: gpt-4o)
+  - Temperatura: `OPENAI_TEMPERATURE` (por defecto: 0.2)
 
-#### TTS Configuration
-The application supports multiple TTS providers:
-- Deepgram (default)
+#### Configuración de TTS
+La aplicación admite múltiples proveedores de TTS:
+- Deepgram (por defecto)
 - Cartesia
 - ElevenLabs
 - Rime
 
-Each provider requires its own API key and has configurable voice settings.
+Cada proveedor requiere su propia clave de API y tiene configuraciones de voz configurables.
 
-#### Bot Configuration
-- Bot Type: `flow` (default) or `simple`
-- Custom bot name
-- STT mute filter toggle
+#### Configuración del Bot
+- Tipo de Bot: `flow` (por defecto) o `simple`
+- Nombre de bot personalizado
+- Interruptor de filtro de silencio STT
 
-### CLI Arguments
+### Argumentos CLI
 
-The bot runner (`runner.py`) supports the following command-line arguments:
+El corredor de bots (`runner.py`) admite los siguientes argumentos de línea de comandos:
 
 ```bash
-Required arguments:
-  -u, --room-url              Daily room URL
-  -t, --token                 Authentication token
+Argumentos requeridos:
+  -u, --room-url              URL de la sala de Daily
+  -t, --token                 Token de autenticación
 
-Bot configuration:
-  -b, --bot-type             Type of bot [simple|flow] (default: flow)
-  -n, --bot-name             Override BOT_NAME
+Configuración del bot:
+  -b, --bot-type             Tipo de bot [simple|flow] (por defecto: flow)
+  -n, --bot-name             Sobrescribe BOT_NAME
 
-LLM configuration:
-  -l, --llm-provider         LLM service provider [google|openai] (default: google)
+Configuración de LLM:
+  -l, --llm-provider         Proveedor de servicios LLM [google|openai] (por defecto: google)
   
-  # Google-specific options
-  -m, --google-model         Override GOOGLE_MODEL
-  -T, --google-temperature   Override GOOGLE_TEMPERATURE (default: 1.0)
+  # Opciones específicas de Google
+  -m, --google-model         Sobrescribe GOOGLE_MODEL
+  -T, --google-temperature   Sobrescribe GOOGLE_TEMPERATURE (por defecto: 1.0)
   
-  # OpenAI-specific options
-  --openai-model            Override OPENAI_MODEL (default: gpt-4o)
-  --openai-temperature      Override OPENAI_TEMPERATURE (default: 0.2)
+  # Opciones específicas de OpenAI
+  --openai-model            Sobrescribe OPENAI_MODEL (por defecto: gpt-4o)
+  --openai-temperature      Sobrescribe OPENAI_TEMPERATURE (por defecto: 0.2)
 
-TTS configuration:
-  -p, --tts-provider         TTS service [deepgram|cartesia|elevenlabs|rime] (default: deepgram)
-  --deepgram-voice           Override DEEPGRAM_VOICE
-  --cartesia-voice           Override CARTESIA_VOICE
-  --elevenlabs-voice-id      Override ELEVENLABS_VOICE_ID
-  --rime-voice-id            Override RIME_VOICE_ID
+Configuración de TTS:
+  -p, --tts-provider         Servicio de TTS [deepgram|cartesia|elevenlabs|rime] (por defecto: deepgram)
+  --deepgram-voice           Sobrescribe DEEPGRAM_VOICE
+  --cartesia-voice           Sobrescribe CARTESIA_VOICE
+  --elevenlabs-voice-id      Sobrescribe ELEVENLABS_VOICE_ID
+  --rime-voice-id            Sobrescribe RIME_VOICE_ID
 
-Additional options:
-  --enable-stt-mute-filter   Enable STT mute filter [true|false] (default: false)
+Opciones adicionales:
+  --enable-stt-mute-filter   Habilitar filtro de silencio STT [true|false] (por defecto: false)
 ```
 
-### Server Setup
+### Configuración del Servidor
 
-Navigate to the `server` directory, set up a virtual environment, and install the dependencies:
+Navega al directorio `server`, configura un entorno virtual e instala las dependencias:
 ```bash
 cd server
 python -m venv venv
-# Activate the virtual environment:
-# On Linux/macOS:
+# Activa el entorno virtual:
+# En Linux/macOS:
 source venv/bin/activate
-# On Windows:
+# En Windows:
 # venv\Scripts\activate
 pip install -r requirements.txt
 pip install -e "../external/pipecat[daily,google,anthropic,openai,deepgram,cartesia,silero]"
 pip install -e "../external/pipecat-flows"
 ```
 
-### Client Setup
+### Configuración del Cliente
 
-Navigate to the `client` directory and install dependencies using pnpm:
+Navega al directorio `client` e instala las dependencias usando pnpm:
 ```bash
 cd ../client
 pnpm install
 ```
 
-## Running the Application
+## Ejecutando la Aplicación
 
-### Server
+### Servidor
 
-#### Local Development
-Run the server from the `server` directory:
+#### Desarrollo Local
+Ejecuta el servidor desde el directorio `server`:
 ```bash
-python -m main --bot-type flow  # Use "simple" instead of "flow" for the simple bot variant
+python -m main --bot-type flow  # Usa "simple" en lugar de "flow" para la variante de bot simple
 ```
 
-#### Docker Container
-Build and run the server in a Docker container:
+#### Contenedor Docker
+Construye y ejecuta el servidor en un contenedor Docker:
 ```bash
 docker build -t pipecat-server:latest -f server/Dockerfile .
 docker run -p 7860:7860 pipecat-server:latest
 ```
 
-### Client
+### Cliente
 
-#### Development Mode
-Run the Next.js client in development mode:
+#### Modo de Desarrollo
+Ejecuta el cliente Next.js en modo de desarrollo:
 ```bash
 pnpm dev
 ```
 
-#### Production Build
-To build and start the production version of the client:
+#### Build de Producción
+Para construir e iniciar la versión de producción del cliente:
 ```bash
 pnpm build
 pnpm start
 ```
 
-## Testing
+## Pruebas
 
-- **Server:**  
-  Follow the testing guidelines provided in the codebase. Tests should use the Arrange-Act-Assert pattern to verify API endpoints and bot functionalities.
-  
-- **Client:**  
-  Execute frontend tests using your preferred test runner (e.g., Jest).
+- **Servidor:**
+  Sigue las directrices de prueba proporcionadas en el código base. Las pruebas deben usar el patrón Arrange-Act-Assert para verificar los endpoints de la API y las funcionalidades del bot.
 
-## License
+- **Cliente:**
+  Ejecuta las pruebas de frontend usando tu corredor de pruebas preferido (por ejemplo, Jest).
 
-[MIT License](LICENSE.md)
+## Licencia
 
-## Contact
+[Licencia MIT](LICENSE.md)
 
-For any questions or issues, please contact [john@askjohngeorge.com](mailto:john@askjohngeorge.com).
+## Contacto
+
+Para cualquier pregunta o problema, por favor contacta a [support@tito.ai](mailto:support@tito.ai).
