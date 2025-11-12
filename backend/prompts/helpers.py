@@ -23,5 +23,5 @@ def get_system_prompt(content: str) -> NodeMessage:
 
 def get_current_date_uk() -> str:
     """Return the current day and date formatted for the UK timezone."""
-    current_date = datetime.now(pytz.timezone("Europe/London"))
+    current_date = datetime.now(pytz.timezone("America/Bogota"))
     return current_date.strftime("%A, %d %B %Y")

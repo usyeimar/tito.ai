@@ -48,12 +48,16 @@ class BotConfig:
         return value.lower() in (
             "true",
             "1",
+
             "t",
             "yes",
             "y",
             "on",
             "enable",
             "enabled",
+            "si",
+            "ok",
+            "okay",
         )
 
     ###########################################################################

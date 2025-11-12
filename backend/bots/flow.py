@@ -1,9 +1,10 @@
-"""Flow-based bot implementation using the base bot framework."""
+"""Flow-based bot implementation for ITM Help Desk."""
 
 from functools import partial
 from typing import Dict
 import sys
 import uuid
+import random
 
 from dotenv import load_dotenv
 from loguru import logger
@@ -17,10 +18,11 @@ from pipecat_flows.types import ContextStrategy, ContextStrategyConfig
 from bots.base_bot import BaseBot
 from config.bot import BotConfig
 from prompts import (
-    get_recording_consent_prompt_es as get_recording_consent_prompt,
-    get_name_and_interest_prompt_es as get_name_and_interest_prompt,
-    get_development_prompt_es as get_development_prompt,
-    get_close_call_prompt_es as get_close_call_prompt,
+    get_greeting_and_consent_prompt,
+    get_identification_prompt,
+    get_problem_description_prompt,
+    get_ticket_result_prompt,
+    get_close_call_prompt,
 )
 
 # Load environment variables from .env file
@@ -36,17 +38,16 @@ logger.add(sys.stderr, level="DEBUG")
 # ==============================================================================
 
 
-def create_recording_consent_node() -> Dict:
-    """# Node 1: Recording Consent Node
-    Create initial node that requests recording consent."""
+def create_greeting_and_consent_node() -> Dict:
+    """# Node 1: Greeting and Recording Consent Node"""
     return {
-        **get_recording_consent_prompt(),
+        **get_greeting_and_consent_prompt(),
         "functions": [
             {
                 "function_declarations": [
                     {
                         "name": "collect_recording_consent",
-                        "description": "Record whether the user consents to the call being recorded",
+                        "description": "Registrar si el usuario consiente que se grabe la llamada",
                         "parameters": {
                             "type": "object",
                             "properties": {
@@ -66,33 +67,26 @@ def create_recording_consent_node() -> Dict:
     }
 
 
-def create_name_and_interest_node() -> Dict:
-    """# Node 2: Collect Name and Interest Node
-    Create node that collects user's name and primary interest."""
+def create_identification_node() -> Dict:
+    """# Node 2: Collect Name and ID Node"""
     return {
-        **get_name_and_interest_prompt(),
+        **get_identification_prompt(),
         "functions": [
             {
                 "function_declarations": [
                     {
-                        "name": "collect_name_and_interest",
-                        "description": "Collect user's name and primary interest",
+                        "name": "collect_identification",
+                        "description": "Recopilar el nombre completo y el número de documento del usuario",
                         "parameters": {
                             "type": "object",
                             "properties": {
                                 "name": {"type": "string"},
-                                "interest_type": {
-                                    "type": "string",
-                                    "enum": [
-                                        "technical_consultation",
-                                        "voice_agent_development",
-                                    ],
-                                },
+                                "id_number": {"type": "string"},
                             },
-                            "required": ["name", "interest_type"],
+                            "required": ["name", "id_number"],
                         },
-                        "handler": collect_name_and_interest,
-                        "transition_callback": handle_name_and_interest,
+                        "handler": collect_identification,
+                        "transition_callback": handle_identification,
                     }
                 ]
             }
@@ -100,29 +94,50 @@ def create_name_and_interest_node() -> Dict:
     }
 
 
-def create_development_node(user_name: str = None) -> Dict:
-    """# Node 3: Development Node
-    Create node for handling voice agent development path."""
+def create_problem_description_node(user_name: str = None) -> Dict:
+    """# Node 3: Problem Description Node"""
     return {
-        **get_development_prompt(user_name),
+        **get_problem_description_prompt(user_name),
         "functions": [
             {
                 "function_declarations": [
                     {
-                        "name": "collect_qualification_data",
-                        "handler": collect_qualification_data,
-                        "description": "Collect qualification information",
+                        "name": "offer_ticket_creation",
+                        "handler": offer_ticket_creation,
+                        "description": "Ofrecer la creación de un ticket de soporte después de escuchar el problema del usuario",
                         "parameters": {
                             "type": "object",
                             "properties": {
-                                "use_case": {"type": "string"},
-                                "timeline": {"type": "string"},
-                                "budget": {"type": "integer"},
-                                "feedback": {"type": "string"},
+                                "problem_description": {"type": "string"},
                             },
-                            "required": ["use_case", "timeline", "budget", "feedback"],
+                            "required": ["problem_description"],
                         },
-                        "transition_callback": handle_qualification_data,
+                        "transition_callback": handle_problem_description,
+                    }
+                ]
+            }
+        ],
+    }
+
+def create_ticket_result_node(user_name: str = None) -> Dict:
+    """# Node 4: Ticket Creation Result Node"""
+    return {
+        **get_ticket_result_prompt(user_name),
+        "functions": [
+            {
+                "function_declarations": [
+                    {
+                        "name": "confirm_ticket_creation",
+                        "handler": confirm_ticket_creation,
+                        "description": "Confirmar si el usuario desea crear un ticket y generar un número de ticket si es así.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "create_ticket": {"type": "boolean"},
+                            },
+                            "required": ["create_ticket"],
+                        },
+                        "transition_callback": handle_ticket_result,
                     }
                 ]
             }
@@ -131,8 +146,7 @@ def create_development_node(user_name: str = None) -> Dict:
 
 
 def create_close_call_node(user_name: str = None) -> Dict:
-    """# Node 4: Final Close Node
-    Create node to conclude the conversation."""
+    """# Node 5: Final Close Node"""
     return {
         **get_close_call_prompt(user_name),
         "functions": [],
@@ -150,27 +164,21 @@ async def collect_recording_consent(args: FlowArgs) -> FlowResult:
     return {"recording_consent": args["recording_consent"]}
 
 
-async def collect_name_and_interest(args: FlowArgs) -> FlowResult:
-    """Collect user's name (if provided) and primary interest."""
-    return {"name": args.get("name"), "interest_type": args["interest_type"]}
+async def collect_identification(args: FlowArgs) -> FlowResult:
+    """Collect user's name and ID number."""
+    return {"name": args.get("name"), "id_number": args.get("id_number")}
 
 
-async def collect_qualification_data(args: FlowArgs) -> FlowResult:
-    """Process qualification data collection."""
-    return {
-        "use_case": args["use_case"],
-        "timeline": args["timeline"],
-        "budget": args["budget"],
-        "feedback": args["feedback"],
-    }
+async def offer_ticket_creation(args: FlowArgs) -> FlowResult:
+    """Process problem description."""
+    return {"problem_description": args.get("problem_description")}
 
-
-async def handle_qa(args: FlowArgs) -> FlowResult:
-    """Process Q&A interaction."""
-    return {
-        "any_more_questions": args["any_more_questions"],
-        "switch_to_service": args["switch_to_service"],
-    }
+async def confirm_ticket_creation(args: FlowArgs) -> FlowResult:
+    """Process ticket creation confirmation."""
+    if args.get("create_ticket"):
+        ticket_number = random.randint(10000, 99999)
+        return {"create_ticket": True, "ticket_number": ticket_number}
+    return {"create_ticket": False}
 
 
 # ==============================================================================
@@ -181,133 +189,30 @@ async def handle_qa(args: FlowArgs) -> FlowResult:
 async def handle_recording_consent(args: Dict, flow_manager: FlowManager):
     """Handle transition after collecting recording consent."""
     flow_manager.state.update(args)
-
     if args["recording_consent"]:
-        await flow_manager.set_node("interest", create_name_and_interest_node())
+        await flow_manager.set_node("identification", create_identification_node())
     else:
-        # If no consent, go directly to close call with contact form navigation
-        close_node = create_close_call_node()
-        close_node["pre_actions"] = [
-            {
-                "type": "tts_say",
-                "text": "Por ahora, lo he dirigido a nuestro formulario de contacto, donde puede enviarnos sus preguntas o requisitos por escrito. No dude en volver a llamar si cambia de opinión.",
-            },
-            {"type": "execute_navigation", "path": "/contact"},
-        ]
-        await flow_manager.set_node("close_call", close_node)
+        await flow_manager.set_node("close_call", create_close_call_node())
 
 
-async def handle_name_and_interest(args: Dict, flow_manager: FlowManager):
-    """Handle transition after collecting user's name and interest."""
+async def handle_identification(args: Dict, flow_manager: FlowManager):
+    """Handle transition after collecting user's name and ID."""
     flow_manager.state.update(args)
-    interest_type = args["interest_type"]
     name = flow_manager.state.get("name")
-    if interest_type == "technical_consultation":
-        close_call = add_consultancy_pre_actions(create_close_call_node(name))
-        await flow_manager.set_node("close_call", close_call)
-    elif interest_type == "voice_agent_development":
-        await flow_manager.set_node("development", create_development_node(name))
-    # else:  # qa
-    #     await flow_manager.set_node("qa", create_qa_node())
+    await flow_manager.set_node("problem_description", create_problem_description_node(name))
 
 
-async def handle_qualification_data(args: Dict, flow_manager: FlowManager):
-    """Handle transition after collecting qualification data."""
+async def handle_problem_description(args: Dict, flow_manager: FlowManager):
+    """Handle transition after collecting problem description."""
     flow_manager.state.update(args)
-
-    qualified = (
-        bool(args.get("use_case"))
-        and bool(args.get("timeline"))
-        and args.get("budget", 0) >= 1000
-        and bool(args.get("feedback"))
-    )
-
-    logger.debug(f"Qualified: {qualified} based on: {args}")
-
-    # Create close call node with navigation as pre-action
     name = flow_manager.state.get("name")
-    close_call = add_development_pre_actions(create_close_call_node(name), qualified)
+    await flow_manager.set_node("ticket_result", create_ticket_result_node(name))
 
-    # Transition to close call node
-    await flow_manager.set_node("close_call", close_call)
-
-
-async def handle_qa_transition(args: Dict, flow_manager: FlowManager):
-    """Handle transition after Q&A interaction."""
+async def handle_ticket_result(args: Dict, flow_manager: FlowManager):
+    """Handle transition after ticket creation result."""
     flow_manager.state.update(args)
-
-    close_node = create_close_call_node()
     name = flow_manager.state.get("name")
-    if args["switch_to_service"] == "technical_consultation":
-        close_node = add_consultancy_pre_actions(close_node)
-        await flow_manager.set_node("close_call", close_node)
-    elif args["switch_to_service"] == "voice_agent_development":
-        await flow_manager.set_node("development", create_development_node(name))
-    else:
-        # No more questions and no service interest - go to close call
-        close_node = add_development_pre_actions(create_close_call_node(name), False)
-        await flow_manager.set_node("close_call", close_node)
-
-
-# ==============================================================================
-# Navigation Handling
-# ==============================================================================
-
-
-def add_consultancy_pre_actions(node: Dict) -> Dict:
-    """Add pre-actions for consultancy navigation."""
-    node["pre_actions"] = [
-        {
-            "type": "tts_say",
-            # "text": "I've navigated you to our consultancy booking page where you can set up a video conference with our founder to discuss your needs in more detail. Please note that this will require an up-front payment which is non-refundable in the case of no-show or cancellation. Please provide as much detail as you can when you book, to assist us in preparing for the call.",
-            "text": "Lo he dirigido a nuestra página de reserva de consultorías, donde puede programar una videoconferencia con nuestro fundador para discutir sus necesidades con más detalle. Por favor, proporcione tantos detalles como pueda al reservar para ayudarnos a prepararnos para la llamada.",
-        },
-        {"type": "execute_navigation", "path": "/consultancy"},
-    ]
-    return node
-
-
-def add_development_pre_actions(node: Dict, qualified: bool) -> Dict:
-    """Add pre-actions for development navigation."""
-    nav_message = (
-        "Lo he dirigido a nuestra página de reserva de llamadas de descubrimiento, donde puede programar una llamada gratuita para discutir sus requisitos con más detalle."
-        if qualified
-        else "Lo he dirigido a nuestro formulario de contacto, donde puede enviarnos más detalles sobre sus requisitos."
-    )
-
-    node["pre_actions"] = [
-        {"type": "tts_say", "text": nav_message},
-        {
-            "type": "execute_navigation",
-            "path": "/discovery" if qualified else "/contact",
-        },
-    ]
-    return node
-
-
-class NavigationCoordinator:
-    """Handles navigation between pages"""
-
-    def __init__(self, rtvi: RTVIProcessor, llm: FrameProcessor, context: OpenAILLMContext):
-        self.rtvi = rtvi
-        self.llm = llm
-        self.context = context
-
-    async def navigate(self, path: str) -> bool:
-        """Handle navigation with error tracking"""
-        try:
-            logger.debug(f"Navigating to {path} from NavigationCoordinator")
-            await self.rtvi.handle_function_call(
-                function_name="navigate",
-                tool_call_id=f"nav_{uuid.uuid4()}",
-                arguments={"path": path},
-                llm=self.llm,
-                context=self.context,
-                result_callback=None,
-            )
-            return True
-        except Exception:
-            return False
+    await flow_manager.set_node("close_call", create_close_call_node(name))
 
 
 # ==============================================================================
@@ -316,23 +221,14 @@ class NavigationCoordinator:
 
 
 class FlowBot(BaseBot):
-    """Flow-based bot implementation with clean navigation separation."""
+    """Flow-based bot implementation for ITM Help Desk."""
 
     def __init__(self, config: BotConfig):
         super().__init__(config)
-
-        # Initialize flow-specific components
-        self.navigation_coordinator = None
         self.flow_manager = None
 
     async def _handle_first_participant(self):
         """Handle first participant by initializing flow manager."""
-        # Set up navigation coordinator
-        self.navigation_coordinator = NavigationCoordinator(
-            rtvi=self.rtvi, llm=self.llm, context=self.context
-        )
-
-        # Set up flow manager
         self.flow_manager = FlowManager(
             task=self.task,
             llm=self.llm,
@@ -341,36 +237,6 @@ class FlowBot(BaseBot):
             context_strategy=ContextStrategyConfig(strategy=ContextStrategy.RESET),
         )
 
-        # Register navigation action
-        self.flow_manager.register_action(
-            "execute_navigation",
-            partial(self._handle_navigation_action, coordinator=self.navigation_coordinator),
-        )
-
         # Initialize flow
         await self.flow_manager.initialize()
-        await self.flow_manager.set_node("recording_consent", create_recording_consent_node())
-
-    async def _handle_navigation_action(self, action: dict, coordinator: NavigationCoordinator):
-        """Handle navigation with proper error handling."""
-        logger.debug(f"Handling navigation action: {action}")
-        path = action["path"]
-
-        try:
-            if not await coordinator.navigate(path):
-                logger.error("Navigation action failed without exception")
-                await self._handle_navigation_error()
-        except Exception as e:
-            logger.error(f"Navigation action failed with exception: {str(e)}")
-            await self._handle_navigation_error()
-
-    async def _handle_navigation_error(self):
-        """Handle navigation errors by transitioning to error close node."""
-        error_node = create_close_call_node()
-        error_node["pre_actions"] = [
-            {
-                "type": "tts_say",
-                "text": "Le pido disculpas, pero encontré un error al intentar navegar a la siguiente página. Por favor, intente refrescar la página o contacte a soporte si el problema persiste.",
-            }
-        ]
-        await self.flow_manager.set_node("close_call", error_node)
+        await self.flow_manager.set_node("greeting_and_consent", create_greeting_and_consent_node())

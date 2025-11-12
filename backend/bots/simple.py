@@ -2,7 +2,7 @@
 
 from bots.base_bot import BaseBot
 from config.bot import BotConfig
-from prompts import get_simple_prompt_es
+from prompts import get_simple_prompt
 from loguru import logger
 
 
@@ -11,7 +11,7 @@ class SimpleBot(BaseBot):
 
     def __init__(self, config: BotConfig):
         # Define the initial system message with conversation instructions
-        system_messages = get_simple_prompt_es()["task_messages"]
+        system_messages = get_simple_prompt()["task_messages"]
         logger.info(f"Initialising SimpleBot with system messages: {system_messages}")
         super().__init__(config, system_messages)
 
