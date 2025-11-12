@@ -308,11 +308,12 @@ class CompletenessCheck(FrameProcessor):
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
 
-        if isinstance(frame, TextFrame) and frame.text == "YES":
+        text = frame.text.upper()
+        if isinstance(frame, TextFrame) and text in ["YES", "SÍ"]:
             logger.debug("!!! Completeness check YES")
             await self.push_frame(UserStoppedSpeakingFrame())
             await self._notifier.notify()
-        elif isinstance(frame, TextFrame) and frame.text == "NO":
+        elif isinstance(frame, TextFrame) and text in ["NO", "NO"]:
             logger.debug("!!! Completeness check NO")
         else:
             await self.push_frame(frame, direction)
