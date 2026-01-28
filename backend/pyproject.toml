@@ -6,7 +6,7 @@ authors = [{name = "Tito AI Team"}]
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
-    "aiohttp==3.11.11",
+    "aiohttp==3.13.3",
     "python-dotenv==1.0.1",
     "fastapi==0.115.8",
     "uvicorn==0.34.0",
